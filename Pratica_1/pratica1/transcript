@@ -253,3 +253,10 @@ add wave -position 2 -autoscale 1 -format Literal -height 19 -editable 2 Edit:/s
 run -all
 write format wave -window .main_pane.wave.interior.cs.body.pw.wf /home/joao/altera/LAOC1/Pratica_1/pratica1/somador.do
 wave editwrite -file /home/joao/altera/LAOC1/Pratica_1/pratica1/somador.do -append
+# Compile of somador.v was successful.
+# Compile of decodificador.v was successful.
+# Compile of decodificador.v was successful.
+# Compile of multiplexador.v was successful.
+# Compile of registrador.v was successful.
+# Compile of somador.v was successful.
+# 4 compiles, 0 failed with no errors. 
