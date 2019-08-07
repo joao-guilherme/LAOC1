@@ -1,0 +1,144 @@
+% Definição do tamanho da letra, folha e estilo.
+\documentclass[12pt, a4paper]{article}
+
+% Definição de pacotes.
+%% Padrão UTF-8.
+%% Texto brasileiro.
+%% Geometria da página de acordo com a ABNT.
+\usepackage[utf8]{inputenc}
+\usepackage[brazil]{babel}
+\usepackage{indentfirst}
+\usepackage{geometry}
+\geometry{a4paper, left = 3cm, right = 3cm, top = 3cm, bottom = 3cm}
+
+% Numeração da página.
+\pagenumbering{arabic}
+
+\title{\textbf{\textit{Datapath} de um Processador Multi-ciclo}}
+\author{
+	Guimarães, João Guilherme M.\\
+	\texttt{joaog95@live.com}
+	\and
+	Muniz, Lucas L. R.\\
+	\texttt{lucaslc01@hotmail.com}
+}
+\date{\today}
+
+\begin{document}
+	% Escrever o título, autor e data.
+	\maketitle
+	
+	% Espaçamento vertical
+	\vspace{1cm}
+	
+	% Nova seção
+	\section{Objetivo da prática}
+	
+	\par A oitava aula prática da disciplina de Laboratório de Arquitetura de Computadores I, teve como objetivo explicar o funcionamento do módulo de Controle e o \textit{datapath} das nove instruções implementadas.
+	
+	\section{Módulo de Controle}
+	
+	\par A unidade lógica de Controle em um processador multi-ciclo, é responsável por gerenciar os valores assumidos pelas variáveis de controle de cada módulo (\textit{controlAlu, controlMux, etc...}), tendo em vista o ciclo e a instrução em execução. \newline
+	
+	\par Segue abaixo parte do código responsável pelo funcionamento do módulo de Controle.
+	
+	\begin{verbatim}
+      ...
+  01. case(Step)
+  02.     2'b00:
+  03.         begin
+  04.             writeEnableRegInstruction <= 1'b1;
+  05.             writeEnableRegisterFile <= 1'b0;
+  06.             incr_pc  <= 1'b1;
+  07.             ReadAddressRF1 <= instruction[8:6];
+  08.             ReadAddressRF2 <= instruction[5:3];
+  09.             writeEnableRegAddress <= 1'b0;
+  10.             controlMux <= 2'b10;
+  11.             W <= 1'b0;
+  12.          end
+  13.
+  14.     2'b01:
+  15.         begin
+  16.             case(instruction[15:12])
+  17.                 4'b1101:  // 2º Ciclo da Instrução Load
+  18.                     begin
+  19.                         incr_pc  <= 1'b0;
+  20.                         writeEnableRegInstruction <= 1'b0;  
+  21.                         writeEnableRegAddress <= 1'b1;
+  22.                         controlMux <= 2'b01;
+  23.                         ReadAddressRF1 <= instruction[8:6];
+  24.                         ReadAddressRF2 <= instruction[5:3];      
+  25.                     end
+  26.                 4'b1100:  // 2º Ciclo da Instrução Store
+  27.                     begin
+  28.                         incr_pc  <= 1'b0;
+       ...
+	\end{verbatim}
+	
+	\par Analisando o código acima, é possível perceber a distinção realizada pelo módulo de Controle do ciclo (linhas \textit{02} e \textit{14}) e da instrução (linhas \textit{17} e \textit{26}), para que cada par ciclo-instrução, tenha os valores corretos (linhas \textit{19} à \textit{24}).
+	
+	% Nova seção
+	\section{Descrição das Instruções}
+	
+	Obs.: como o primeiro e o último ciclo são iguais para todas as instruções, eles terão os \textit{datapaths} descritos separadamente. \newline
+	
+	\par \textit{\textbf{ciclo 0}}: este ciclo é responsável por incrementar o valor de \textit{PC} e realizar o armazenamento da instrução a ser executada, no respectivo registrador. \newline
+	
+	\par \textit{\textbf{ciclo 3}}: é responsável por resetar o valor de qualquer variável de controle crítica, preparar a leitura da próxima instrução a ser executada e caso a instrução atual for de \textit{store}, habilita a escrita do dado na memória. \newline
+	
+	\par \textit{\textbf{add(0000) / or(0001) / and(0010) / not(0011)}}: instrução responsável por realizar a operação de  soma / \textit{or} bit-a-bit ($\mid\mid$) / \textit{and} bit-a-bit (\&\&) / \textit{not} bit-a-bit (!) dos registradores \textbf{Y} e \textbf{Z}, e armazenar o valor resultante no registrador \textbf{X}.
+	
+	\begin{enumerate}
+	   	\item[C1 -] consiste em ler os dados dos dois registradores passados como parâmetro e armazenar o resultado da operação aritmética no registrador \textit{regALU}.
+	   	
+	   	\item[C2 -] seleciona a porta do \textit{MUX} que tenha o valor de \textit{regALU}, para que este dado seja enviado para o módulo \textit{RF} e armazenado no registrador \textbf{X}.
+	\end{enumerate}
+	
+	\par \textit{\textbf{store(1100)}}: instrução responsável por armazenar o dado do registrador \textbf{X} na posição de memória que se encontra no registrador \textbf{Y}.
+	
+	\begin{enumerate}
+		\item[C1-] leitura dos dados dos registradores \textbf{X} e \textbf{Y}, e armazenamento da informação de \textbf{Y} em \textit{regDadress}, utilizando o controle do \textit{MUX}.
+		
+		\item[C2-] seleciona a porta do \textit{MUX} correspondente ao valor de \textbf{X}, para que este seja armazenado em \textit{regDout}.
+		
+		\item[C3-] escreve o dado na memória lendo os registradores \textit{regDout} e \textit{regDadress}.
+	\end{enumerate}
+
+	\par \textit{\textbf{load(1101)}}: instrução responsável por ler dados da memória, consiste em obter o endereço de memória previamente armazenado no registrador \textbf{Y} e salvar o dado lido no registrador \textbf{X}.
+	
+	\begin{enumerate}
+		\item[C1-] transfere o dado armazenado no registrador \textbf{Y} para o registrador \textit{regDadress}.
+		\item[C2-] leitura do dado da memória utilizando o endereço armazenado em \textit{regDadress}, e o armazena no registrador \textbf{X}.
+	\end{enumerate}
+
+	\par \textit{\textbf{conditional copy(1011)}}: realiza a instrução \textit{copy} se e somente se, o dado armazenado em \textit{regAlu} for 0.
+
+	\begin{enumerate}
+		\item[C1-] leitura do registrador \textbf{Y}.
+		\item[C2-] verificação do valor armazenado por \textit{regAlu}, caso seja 0, escreve o dado de \textbf{Y} em \textbf{X}, caso contrário, não realiza nenhuma operação.
+	\end{enumerate}
+
+	\par \textit{\textbf{copy(1110)}}: instrução responsável por copiar o dado no registrador \textbf{Y} e enviar para o registrador \textbf{X}.
+	
+    \begin{enumerate}
+        \item[C1-] leitura do registrador \textbf{Y}.
+        \item[C2-] habilitação da escrita para sobrescrever o dado do registrador \textbf{X}.
+    \end{enumerate}
+
+	\par \textit{\textbf{copy input(1111)}}: instrução responsável por armazenar o valor de \textit{DataIn} no registrador \textbf{X}, para isso, é realizado a leitura do próximo endereço de memória armazenado pelo \textbf{PC}.
+	
+    \begin{enumerate}
+        \item[C1-] é realizado o incremento do valor de \textit{PC} e o armazena em \textit{regDadress}.
+        \item[C2-] leitura da próxima posição de memória devido ao incremento de \textit{PC} e armazenamento do dado lido no registrador \textbf{X}.
+    \end{enumerate}
+
+	\textit{Obs.: todos os processos de escrita em RF utilizam o endereço do registrador \textbf{X}, devido a decisão de projeto (processador.v, linha 24, coluna 49).}
+
+	\section{Conclusão}
+	
+	\par Como citado anteriormente, o módulo de Controle é responsável por gerenciar os valores assumidos pelas variáveis de controle de cada módulo, e com este papel, é nele que ocorre a criação das nove instruções citadas acima (cada \textit{case} do \textit{switch} de ciclos). \newline
+	
+	\par Devido a sua complexidade, o módulo de Controle é deixado como o último a ser implementado, porém somente com sua adesão aos outros módulos, é possível realizar testes no código de forma automatizada (criação de \textit{scripts}), sendo assim, é nesta fase que se encontra os primeiros problemas do desenvolvimento, pois alguma instrução pode implicar em quebra de paradigma. Para evitar problemas desta natureza, é necessário que o projeto do processador multi-ciclo seja bem definido e todas as instruções se complementem. \newline
+
+\end{document}
+	
